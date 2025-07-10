@@ -1,0 +1,98 @@
+<mat-card class="widget-card" [class.editable]="editable">
+  <!-- Widget Header -->
+  <mat-card-header class="widget-header">
+    <mat-card-title class="widget-title">{{ widget.title }}</mat-card-title>
+    
+    <div class="widget-actions">
+      <button 
+        mat-icon-button 
+        (click)="onRefresh()" 
+        matTooltip="Refresh"
+        class="action-button">
+        <mat-icon>refresh</mat-icon>
+      </button>
+      
+      <button 
+        mat-icon-button 
+        [matMenuTriggerFor]="widgetMenu"
+        matTooltip="More Options"
+        class="action-button">
+        <mat-icon>more_vert</mat-icon>
+      </button>
+      
+      <mat-menu #widgetMenu="matMenu">
+        <button mat-menu-item (click)="onEdit()" *ngIf="editable">
+          <mat-icon>edit</mat-icon>
+          <span>Edit Widget</span>
+        </button>
+        <button mat-menu-item (click)="onDuplicate()" *ngIf="editable">
+          <mat-icon>content_copy</mat-icon>
+          <span>Duplicate</span>
+        </button>
+        <button mat-menu-item (click)="onRefresh()">
+          <mat-icon>refresh</mat-icon>
+          <span>Refresh</span>
+        </button>
+        <mat-divider *ngIf="editable"></mat-divider>
+        <button mat-menu-item (click)="onRemove()" *ngIf="editable" class="danger-item">
+          <mat-icon>delete</mat-icon>
+          <span>Remove</span>
+        </button>
+      </mat-menu>
+    </div>
+  </mat-card-header>
+  
+  <!-- Widget Content -->
+  <mat-card-content class="widget-content">
+    <!-- Loading State -->
+    <div class="widget-loading" *ngIf="isLoading">
+      <mat-spinner diameter="32"></mat-spinner>
+      <span>Loading...</span>
+    </div>
+    
+    <!-- Error State -->
+    <div class="widget-error" *ngIf="error && !isLoading">
+      <mat-icon>error_outline</mat-icon>
+      <p>{{ error }}</p>
+      <button mat-button color="primary" (click)="onRefresh()">Retry</button>
+    </div>
+    
+    <!-- Widget Content Based on Type -->
+    <div class="widget-content-container" *ngIf="!isLoading && !error">
+      <ng-container [ngSwitch]="widget.type">
+        <app-chart-widget 
+          *ngSwitchCase="'chart'" 
+          [data]="widgetData" 
+          [config]="widget.config"
+          (dataChange)="onDataUpdate($event)">
+        </app-chart-widget>
+        
+        <app-stats-widget 
+          *ngSwitchCase="'stats'" 
+          [data]="widgetData" 
+          [config]="widget.config"
+          (dataChange)="onDataUpdate($event)">
+        </app-stats-widget>
+        
+        <app-table-widget 
+          *ngSwitchCase="'table'" 
+          [data]="widgetData" 
+          [config]="widget.config"
+          (dataChange)="onDataUpdate($event)">
+        </app-table-widget>
+        
+        <app-text-widget 
+          *ngSwitchCase="'text'" 
+          [data]="widgetData" 
+          [config]="widget.config"
+          (dataChange)="onDataUpdate($event)">
+        </app-text-widget>
+        
+        <div *ngSwitchDefault class="unknown-widget">
+          <mat-icon>help_outline</mat-icon>
+          <p>Unknown widget type: {{ widget.type }}</p>
+        </div>
+      </ng-container>
+    </div>
+  </mat-card-content>
+</mat-card>

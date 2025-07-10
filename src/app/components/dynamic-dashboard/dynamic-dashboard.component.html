@@ -1,0 +1,209 @@
+<div class="dashboard-container" [attr.data-theme]="dashboardConfig?.theme">
+  <!-- Header Toolbar -->
+  <mat-toolbar class="dashboard-toolbar" color="primary">
+    <div class="toolbar-content">
+      <div class="toolbar-left">
+        <button mat-icon-button [matMenuTriggerFor]="dashboardsMenu" matTooltip="Select Dashboard">
+          <mat-icon>dashboard</mat-icon>
+        </button>
+        <span class="dashboard-title">{{ dashboardConfig?.title || 'Loading...' }}</span>
+      </div>
+      
+      <div class="toolbar-actions">
+        <button 
+          mat-raised-button 
+          color="accent"
+          (click)="openAddWidgetDialog()"
+          class="add-widget-btn"
+          *ngIf="dashboardConfig">
+          <mat-icon>add</mat-icon>
+          <span class="btn-text">Add Widget</span>
+        </button>
+        
+        <button 
+          mat-icon-button 
+          [color]="isEditMode ? 'warn' : 'primary'"
+          (click)="toggleEditMode()"
+          [matTooltip]="isEditMode ? 'Exit Edit Mode' : 'Enter Edit Mode'"
+          class="edit-btn"
+          *ngIf="dashboardConfig">
+          <mat-icon>{{ isEditMode ? 'edit_off' : 'edit' }}</mat-icon>
+        </button>
+        
+        <button 
+          mat-icon-button 
+          [matMenuTriggerFor]="settingsMenu"
+          matTooltip="Dashboard Settings"
+          class="settings-btn"
+          *ngIf="dashboardConfig">
+          <mat-icon>settings</mat-icon>
+        </button>
+        
+        <!-- Dashboards Menu -->
+        <mat-menu #dashboardsMenu="matMenu" class="dashboards-menu">
+          <div class="menu-header">
+            <span>My Dashboards</span>
+          </div>
+          <mat-divider></mat-divider>
+          <button 
+            mat-menu-item 
+            *ngFor="let dashboard of availableDashboards" 
+            (click)="switchDashboard(dashboard.id)"
+            [class.active]="dashboardConfig?.id === dashboard.id">
+            <mat-icon>{{ dashboardConfig?.id === dashboard.id ? 'check' : 'dashboard' }}</mat-icon>
+            <span>{{ dashboard.title }}</span>
+          </button>
+          <mat-divider></mat-divider>
+          <button mat-menu-item (click)="createNewDashboard()">
+            <mat-icon>add</mat-icon>
+            <span>Create New Dashboard</span>
+          </button>
+        </mat-menu>
+        
+        <!-- Settings Menu -->
+        <mat-menu #settingsMenu="matMenu" class="settings-menu">
+          <button mat-menu-item (click)="toggleWidgetPalette()" *ngIf="isEditMode">
+            <mat-icon>{{ showWidgetPalette ? 'view_sidebar_off' : 'view_sidebar' }}</mat-icon>
+            <span>{{ showWidgetPalette ? 'Hide' : 'Show' }} Widget Palette</span>
+          </button>
+          <mat-divider></mat-divider>
+          <button mat-menu-item (click)="deleteDashboard()" class="danger-item">
+            <mat-icon>delete</mat-icon>
+            <span>Delete Dashboard</span>
+          </button>
+        </mat-menu>
+      </div>
+    </div>
+  </mat-toolbar>
+
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="isLoading">
+    <mat-spinner diameter="48"></mat-spinner>
+    <p>Loading dashboard...</p>
+  </div>
+
+  <!-- Main Content -->
+  <div class="dashboard-content" [class.edit-mode]="isEditMode" *ngIf="!isLoading && dashboardConfig">
+    <!-- Widget Palette (Edit Mode) -->
+    <mat-sidenav-container class="sidenav-container" *ngIf="isEditMode && showWidgetPalette">
+      <mat-sidenav 
+        mode="side" 
+        opened="true" 
+        class="widget-palette"
+        disableClose="true">
+        <div class="palette-header">
+          <mat-icon>widgets</mat-icon>
+          <h3>Widget Library</h3>
+        </div>
+        
+        <div class="palette-content">
+          <div class="palette-widgets">
+            <mat-card 
+              *ngFor="let template of widgetTemplates"
+              class="palette-widget"
+              cdkDrag
+              [cdkDragData]="template.type">
+              <mat-card-content class="widget-template">
+                <div class="template-icon">
+                  <mat-icon>{{ template.icon }}</mat-icon>
+                </div>
+                <div class="template-info">
+                  <h4>{{ template.name }}</h4>
+                  <p>{{ template.description }}</p>
+                </div>
+              </mat-card-content>
+              <mat-card-actions>
+                <button mat-button color="primary" (click)="addWidget(template.type)">
+                  <mat-icon>add</mat-icon>
+                  Add
+                </button>
+              </mat-card-actions>
+            </mat-card>
+          </div>
+        </div>
+      </mat-sidenav>
+
+      <mat-sidenav-content class="dashboard-main">
+        <div class="grid-container">
+          <div 
+            #gridContainer
+            class="dashboard-grid"
+            cdkDropList
+            [cdkDropListData]="dashboardConfig.widgets"
+            (cdkDropListDropped)="onDrop($event)">
+            
+            <!-- Grid Background -->
+            <div *ngIf="isEditMode" class="grid-background"></div>
+            
+            <!-- Widgets -->
+            <div
+              *ngFor="let widget of dashboardConfig.widgets; trackBy: trackByWidgetId"
+              class="widget-container"
+              [style.grid-column]="getGridColumn(widget)"
+              [style.grid-row]="getGridRow(widget)"
+              cdkDrag
+              [cdkDragDisabled]="!isEditMode">
+              
+              <app-dashboard-widget
+                [widget]="widget"
+                [editable]="isEditMode"
+                (editWidget)="editWidget($event)"
+                (removeWidget)="removeWidget($event)"
+                (duplicateWidget)="duplicateWidget($event)"
+                (updateWidget)="updateWidget($event)">
+              </app-dashboard-widget>
+            </div>
+          </div>
+        </div>
+      </mat-sidenav-content>
+    </mat-sidenav-container>
+
+    <!-- Normal View -->
+    <div *ngIf="!isEditMode || !showWidgetPalette" class="dashboard-main">
+      <div class="grid-container">
+        <div class="dashboard-grid" [class.edit-grid]="isEditMode">
+          <!-- Grid Background (Edit Mode) -->
+          <div *ngIf="isEditMode" class="grid-background"></div>
+          
+          <!-- Widgets -->
+          <div
+            *ngFor="let widget of dashboardConfig.widgets; trackBy: trackByWidgetId"
+            class="widget-container"
+            [style.grid-column]="getGridColumn(widget)"
+            [style.grid-row]="getGridRow(widget)"
+            cdkDrag
+            [cdkDragDisabled]="!isEditMode">
+            
+            <app-dashboard-widget
+              [widget]="widget"
+              [editable]="isEditMode"
+              (editWidget)="editWidget($event)"
+              (removeWidget)="removeWidget($event)"
+              (duplicateWidget)="duplicateWidget($event)"
+              (updateWidget)="updateWidget($event)">
+            </app-dashboard-widget>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="dashboardConfig.widgets.length === 0" class="empty-dashboard">
+      <div class="empty-state">
+        <div class="empty-icon">
+          <mat-icon>dashboard</mat-icon>
+        </div>
+        <h2>Welcome to Your Dashboard</h2>
+        <p>Create beautiful, interactive dashboards with drag-and-drop widgets</p>
+        <button 
+          mat-raised-button 
+          color="primary"
+          (click)="openAddWidgetDialog()"
+          class="cta-button">
+          <mat-icon>add</mat-icon>
+          Create Your First Widget
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
